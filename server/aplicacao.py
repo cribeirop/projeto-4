@@ -28,6 +28,8 @@ class Server():
         self.id = 14
         self.ocioso = True
         self.ligado = True
+        self.cont = 0
+        self.sucesso = False
 
     def sacrifica_byte(self):
         #Se chegamos até aqui, a comunicação foi aberta com sucesso. Faça um print para informar.
@@ -210,39 +212,47 @@ def main():
         server.sacrifica_byte()
 
         while server.ligado:
-
+            ### Início do handshake
             if server.ocioso:
-                if server.com1.rx.getIsEmpty():\
+                if server.com1.rx.getIsEmpty():
                     time.sleep(1)
                 else:
                     rxBuffer, nRx = server.recebe_pacote()
                     tipo = rxBuffer[0]
                     if tipo == 1:
-                        id_destinatario = rxBuffer[1]
-                        para_mim = server.id == id_destinatario
+                        id_destino = rxBuffer[1]
+                        para_mim = server.id == id_destino
                         if para_mim:
                             server.ocioso = False
                             time.sleep(1)
                         else:
                             time.sleep(1)
             else:
-                ### Iniciou "na escuta!"
-                head = b''
+                ### Inicia "na escuta!"
+                id_arquivo = rxBuffer[5]
+                numPckg = rxBuffer[4]
+                head = b'\x02\x00\x00\x01\x00' + id_arquivo.to_bytes(1, 'big') + b'\xCC\xDD\xAA\xBB'
                 server.envia_pacote(head)
+            ### Fim do handshake
+            ### Inicio da recebimento do pacote de dados
+                while not server.sucesso:
+                    server.cont += 1
+                    if server.cont <= numPckg:
+                        inicio = time.time()
+                        fim = time.time()
+                        ### Inicia "pacotes de dados"
+                        msg_recebida = not server.com1.rx.getIsEmpty()
+                        if msg_recebida:
+                            rxBuffer, nRx = server.recebe_pacote()
+                            tipo = rxBuffer[0]
+                            if tipo == 3:
+                                ### pckg ok?
+                                pass
+                            
 
-
-        
-                while server.handshake_on or server.transmissao_on:
-                    rxBuffer, nRx = server.recebe_pacote()
-                    tipo_mensagem = rxBuffer[0]
-
-                    if tipo_mensagem == 0:
-                        server.handshake(rxBuffer)
-                    elif tipo_mensagem == 1:
-                        server.transmissao(rxBuffer, nRx)
-
-        if  server.conclusao_on:
-            server.conclusao()
+                    else:
+                        server.sucesso = True
+                    
         
         # Encerra comunicação
         print("-------------------------")
