@@ -271,7 +271,7 @@ def main():
                                     encerra(com1)
                                     verifica_t3 = False
                                 else:
-                                    if timer1 > 2:
+                                    if timer1 - time.time() > 2:
                                         # Envia msg t4
                                         head = b''
                                         server.envia_pacote(head)
