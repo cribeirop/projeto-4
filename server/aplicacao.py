@@ -259,7 +259,16 @@ def main():
                                 tipo = rxBuffer[0]
                                 if tipo == 3:
                                     ### pckg ok?
-                                    pass
+                                    if pckg_ok:
+                                        # Envia msg t4
+                                        head = b''
+                                        server.envia_pacote(head)
+                                    else:
+                                        # Envia msg t6
+                                        head = b''
+                                        server.envia_pacote(head)
+                                        # Remove 1 de cont pois irá ser adicionado no loop while not server.sucesso e não deveria
+                                        server.cont -= 1
                             else:
                                 time.sleep(1)
                                 if timer2 - time.time() > 20:
