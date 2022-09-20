@@ -198,6 +198,12 @@ class Server():
     #     nRx = headNRx + eopNRx
     #     return rxBuffer, nRx
 
+def encerra(com1):
+    print("-------------------------")
+    print("Comunicação encerrada")
+    print("-------------------------")
+    com1.disable()
+
 def main():
     try:
         print("Iniciou o main")
@@ -235,25 +241,44 @@ def main():
                 server.envia_pacote(head)
             ### Fim do handshake
             ### Inicio da recebimento do pacote de dados
+                
                 while not server.sucesso:
                     server.cont += 1
                     if server.cont <= numPckg:
-                        inicio = time.time()
-                        fim = time.time()
-                        ### Inicia "pacotes de dados"
-                        msg_recebida = not server.com1.rx.getIsEmpty()
-                        if msg_recebida:
-                            rxBuffer, nRx = server.recebe_pacote()
-                            tipo = rxBuffer[0]
-                            if tipo == 3:
-                                ### pckg ok?
-                                pass
-                            
+                        
+                        timer1 = time.time()
+                        timer2 = time.time()
 
+                        verifica_t3 = True
+                        while verifica_t3:
+                            ### Inicia "pacotes de dados"
+                            msg_recebida = not server.com1.rx.getIsEmpty()
+                            if msg_recebida:
+                                verifica_t3 = False
+                                rxBuffer, nRx = server.recebe_pacote()
+                                tipo = rxBuffer[0]
+                                if tipo == 3:
+                                    ### pckg ok?
+                                    pass
+                            else:
+                                time.sleep(1)
+                                if timer2 - time.time() > 20:
+                                    server.ocioso = True
+                                    # Envia msg t5
+                                    head = b''
+                                    server.envia_pacote(head)
+                                    # Encerra comunicação
+                                    encerra(com1)
+                                    verifica_t3 = False
+                                else:
+                                    if timer1 > 2:
+                                        # Envia msg t4
+                                        head = b''
+                                        server.envia_pacote(head)
+                                        # Reset timer
+                                        timer1 = time.time()
                     else:
                         server.sucesso = True
-                    
-        
         # Encerra comunicação
         print("-------------------------")
         print("Comunicação encerrada")
