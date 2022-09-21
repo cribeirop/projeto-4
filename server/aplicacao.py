@@ -199,12 +199,6 @@ class Server():
     #     nRx = headNRx + eopNRx
     #     return rxBuffer, nRx
 
-def encerra(com1):
-    print("-------------------------")
-    print("Comunicação encerrada")
-    print("-------------------------")
-    com1.disable()
-
 def extrai_payload(rxBuffer):
     tamanho_payload = rxBuffer[5]
     payload = rxBuffer[10:10+tamanho_payload]
@@ -262,7 +256,7 @@ def main():
             ### Fim do handshake
             ### Inicio da recebimento do pacote de dados
                 
-                while not server.sucesso:
+                while not server.sucesso and not server.ocioso:
                     server.cont += 1
                     if server.cont <= numPckg:
                         
@@ -295,11 +289,11 @@ def main():
                                 time.sleep(1)
                                 if timer2 - time.time() > 20:
                                     server.ocioso = True
+                                    server.ligado = False
                                     # Envia msg t5
                                     head = b''
                                     server.envia_pacote(head)
                                     # Encerra comunicação
-                                    encerra(com1)
                                     verifica_t3 = False
                                 else:
                                     if timer1 - time.time() > 2:
