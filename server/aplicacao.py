@@ -30,6 +30,7 @@ class Server():
         self.ligado = True
         self.cont = 0
         self.sucesso = False
+        self.mensagem = None
 
     def sacrifica_byte(self):
         #Se chegamos até aqui, a comunicação foi aberta com sucesso. Faça um print para informar.
@@ -204,6 +205,18 @@ def encerra(com1):
     print("-------------------------")
     com1.disable()
 
+def extrai_payload(rxBuffer):
+    tamanho_payload = rxBuffer[5]
+    payload = rxBuffer[10:10+tamanho_payload]
+    return payload
+
+def atualiza_mensagem(server, payload):
+    if server.mensagem == None:
+        server.mensagem = payload
+    else:
+        server.mensagem += payload
+    
+
 def main():
     try:
         print("Iniciou o main")
@@ -260,6 +273,8 @@ def main():
                                 if tipo == 3:
                                     ### pckg ok?
                                     if pckg_ok:
+                                        payload = extrai_payload(rxBuffer)
+                                        atualiza_mensagem(server, payload)
                                         # Envia msg t4
                                         head = b''
                                         server.envia_pacote(head)
