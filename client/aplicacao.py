@@ -3,15 +3,15 @@ import time
 import numpy as np
 import random
 
+serialName = "COM4"
+
 class Client:
-    def __init__(self, serialName, id):
-        self.com = enlace(serialName)
-        self.com.enable()
+    def __init__(self):
 
         self.dir = "./imgs/imageR.png"
         self.imagem = open(self.dir, 'rb').read()
 
-        self.id = id
+        self.id = 15
 
         self.num_total = len(self.imagem) // 114
         self.num_pacote = 1
@@ -132,9 +132,15 @@ class Client:
                             self.num_pacote += 1
                             enviado = True
                             msg_correta = True
-                
 
-
-
-
+if __name__ == "__main__":
+    try:
+        com = enlace(serialName)
+        com.enable()
+        Client.tipo_1(14)
+        Client.tipo_3()
+    except Exception as erro:
+        print("ops! :-\\")
+        print(erro)
+        com.disable()
 
