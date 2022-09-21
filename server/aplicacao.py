@@ -216,6 +216,13 @@ def atualiza_mensagem(server, payload):
     else:
         server.mensagem += payload
     
+def salva_dados(mensagem):
+    imageW = "./imgs/recebidaCopia.png"
+    print("Salvando dados no arquivo:")
+    print(" - {}".format(imageW))
+    f = open(imageW, 'wb')
+    f.write(mensagem)
+    f.close()
 
 def main():
     try:
@@ -303,6 +310,7 @@ def main():
                                         timer1 = time.time()
                     else:
                         server.sucesso = True
+                        salva_dados(server.mensagem)
         # Encerra comunicação
         print("-------------------------")
         print("Comunicação encerrada")
