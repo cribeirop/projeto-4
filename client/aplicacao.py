@@ -13,11 +13,18 @@ class Client:
 
         self.id = 15
 
+        self.com = enlace(serialName)
+        self.com.enable()
+
         self.num_total = len(self.imagem) // 114
         self.num_pacote = 1
 
         self.h8 = b'\x00'
         self.h9 = b'\x00'
+
+    def disable(self):
+        self.com.disable()
+        return "Comunicação encerrada"
 
     def sacrifica_byte(self):
         time.sleep(.2)
@@ -43,15 +50,13 @@ class Client:
             self.head = self.h1+self.h2+self.h3+self.h4+self.h5+self.h6+self.h7+self.h8+self.h9
             self.pacote = self.head+self.payload+self.eop
             self.com.sendData(self.pacote)
-            start = time.time()
-            while self.com.rx.getIsEmpty():
-                pass
-            end = time.time()
-            if end - start <= 5:
+            time.sleep(5)
+            if self.com.rx.getIsEmpty():
+                ocioso = False
+            else:
                 rxBuffer, nRx = self.com.getData(14)
-                if rxBuffer[0] == 2 and rxBuffer[5] == id:
+                if rxBuffer[0] == 2 and rxBuffer[5] == self.id:
                     ocioso = True
-            else: ocioso = False
     
     def tipo_5(self): # handshake?
         self.payload = b'\x00'
@@ -70,6 +75,7 @@ class Client:
 
     def tipo_3(self):
         pacotes_enviados = 0
+
         while self.num_pacote <= self.num_total:
             self.payload = b''
             if len(self.imagem) - pacotes_enviados < 0: 
@@ -77,6 +83,7 @@ class Client:
             else:
                 self.payload += self.imagem[pacotes_enviados:pacotes_enviados+114]
                 pacotes_enviados += 114
+
             self.eop = b'\xaa\xbb\xcc\xdd'
             self.h0 = b'\x03'
             self.h1 = b'\x00'
@@ -88,59 +95,64 @@ class Client:
             self.h7 = b'\x00'
             self.head = self.h1+self.h2+self.h3+self.h4+self.h5+self.h6+self.h7+self.h8+self.h9
             self.pacote = self.head+self.payload+self.eop
+
             enviado = False
             while enviado == False:
                 self.com.sendData(self.pacote)
+                start1 = time.time()
+                start2 = time.time()
                 msg_correta = False
                 while msg_correta == False:
-                    if self.com.rx.getIsEmpty():
-                        start = time.time()
+                    if self.com.rx.getIsEmpty() or self.com.getData(14)[0][0] != 4:
                         while self.com.rx.getIsEmpty():
                             pass 
-                        end = time.time()
-                        if end - start <= 5:
+                        if start1 - time.time() <= 5:
                             while self.com.rx.getIsEmpty():
                                 pass 
-                            end = time.time()
-                            if end - start <= 20:
+                            if start2 - time.time() <= 20:
                                 rxBuffer, nRx = self.com.getData(14)
                                 if rxBuffer[0] == 6:
-                                    self.num_pacote -= 1
+                                    self.num_pacote = rxBuffer[6]
                                     self.com.sendData(self.pacote)
-                                else: msg_correta = True
+                                    start1 = time.time()
+                                    start2 = time.time()
+                                msg_correta = False
                             else: 
                                 self.tipo_5()
-                                self.com.disable()
+                                self.disable()
                         else: 
                             self.com.sendData(self.pacote)
-                            start = time.time()
+                            start1 = time.time()
                             while self.com.rx.getIsEmpty():
                                 pass
-                            end = time.time()
-                            if end - start <= 20:
+                            if start2 - time.time() <= 20:
                                 rxBuffer, nRx = self.com.getData(14)
                                 if rxBuffer[0] == 6:
-                                    self.num_pacote -= 1
+                                    self.num_pacote = rxBuffer[6]
                                     self.com.sendData(self.pacote) 
-                                else: msg_correta = True
+                                    start1 = time.time()
+                                    start2 = time.time()
+                                msg_correta = False
                             else:
                                 self.tipo_5()
-                                self.com.disable()                            
-                    rxBuffer, nRx = self.com.getData(14)
-                    if self.com.rx.getIsEmpty() == False:
+                                self.disable()    
+                    else:                        
+                        rxBuffer, nRx = self.com.getData(14)
                         if rxBuffer[0] == 4:
                             self.num_pacote += 1
                             enviado = True
                             msg_correta = True
+                        else: ...
+        if self.num_pacote == self.num_total:
+            self.disable()
+    
+    def main(self):
+        self.tipo_1()
+        self.tipo_5()
 
 if __name__ == "__main__":
     try:
-        com = enlace(serialName)
-        com.enable()
-        Client.tipo_1(14)
-        Client.tipo_3()
-    except Exception as erro:
-        print("ops! :-\\")
-        print(erro)
-        com.disable()
+        Client.main()
 
+    except Exception as erro:
+        Client.disable()
