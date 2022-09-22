@@ -24,13 +24,15 @@ import numpy as np
 #serialName = "/dev/tty.usbmodem1411" # Mac    (variacao de)
 
 class Server():
-    def __init__(self):
+    def __init__(self, com1):
         self.id = 14
         self.ocioso = True
         self.ligado = True
         self.cont = 0
         self.sucesso = False
         self.mensagem = None
+        self.ultimo_pacote = -1
+        self.com1 = com1
 
     def sacrifica_byte(self):
         #Se chegamos até aqui, a comunicação foi aberta com sucesso. Faça um print para informar.
@@ -42,162 +44,56 @@ class Server():
 
     def recebe_pacote(self):
         headRxBuffer, headNRx = self.com1.getData(10)
-        tamanho_payload = headRxBuffer[4]
-        print(f'Tamanho do payload é {tamanho_payload}')
-
-        if tamanho_payload > 0:
-            payloadRxBuffer, payloadNRx = self.com1.getData(tamanho_payload)
-            lenEop = self.com1.rx.getBufferLen()
-            eopRxBuffer, eopNRx = self.com1.getData(lenEop)
-            rxBuffer = headRxBuffer + payloadRxBuffer + eopRxBuffer
-            nRx = headNRx + payloadNRx + eopNRx
-            return rxBuffer, nRx
+        if headRxBuffer[0] == 5:
+            self.ligado = False
+            self.ocioso = True
+            self.com1.disable()
+            print("-------------------------")
+            print("Comunicação encerrada por TIME OUT no CLIENTE")
+            print("-------------------------")
+            return 0,0
         
-        eopRxBuffer, eopNRx = self.com1.getData(4)
-        rxBuffer = headRxBuffer + eopRxBuffer
-        nRx = headNRx + eopNRx
-        return rxBuffer, nRx
+        else:
+            tamanho_payload = headRxBuffer[5]
+            print(f'Tamanho do payload é {tamanho_payload}')
+
+            if tamanho_payload > 0:
+                payloadRxBuffer, payloadNRx = self.com1.getData(tamanho_payload)
+                lenEop = self.com1.rx.getBufferLen()
+                eopRxBuffer, eopNRx = self.com1.getData(lenEop)
+                rxBuffer = headRxBuffer + payloadRxBuffer + eopRxBuffer
+                nRx = headNRx + payloadNRx + eopNRx
+                return rxBuffer, nRx
+            
+            eopRxBuffer, eopNRx = self.com1.getData(4)
+            rxBuffer = headRxBuffer + eopRxBuffer
+            nRx = headNRx + eopNRx
+            return rxBuffer, nRx
 
     def envia_pacote(self, head, payload=b'', eop=b'\xAA\xBB\xCC\xDD'):
         txBuffer = head + payload + eop
         self.com1.sendData(np.asarray(txBuffer))
 
+    def atualiza_arquivo(self, pacote_enviado, total_pacotes,instante=time.time(), recebimento=True, tipo=3, tamanho=14, CRC='' ):
+        with open('server1.txt', 'a') as f:
+            operacao = 'Recebimento' if recebimento else 'Envio'
+            f.write(f'{instante} / {operacao} / {tipo} / {tamanho} / {pacote_enviado} / {total_pacotes} / {CRC}\n')
+        ########## ERRO ORDEM DOS PACOTES ##########
+        # with open('server2.txt', 'a') as f:
+        #     operacao = 'Recebimento' if recebimento else 'Envio'
+        #     f.write(f'{instante} / {operacao} / {tipo} / {tamanho} / {pacote_enviado} / {total_pacotes} / {CRC}\n')
+        ########## ERRO ORDEM DOS PACOTES ##########
+        ########## ERRO TIME OUT ##########
+        # with open('server3.txt', 'a') as f:
+        #     operacao = 'Recebimento' if recebimento else 'Envio'
+        #     f.write(f'{instante} / {operacao} / {tipo} / {tamanho} / {pacote_enviado} / {total_pacotes} / {CRC}\n')
+        ########## ERRO TIME OUT ##########
+        ########## SITUAÇÃO FIO TIRADO ##########
+        # with open('server4.txt', 'a') as f:
+        #     operacao = 'Recebimento' if recebimento else 'Envio'
+        #     f.write(f'{instante} / {operacao} / {tipo} / {tamanho} / {pacote_enviado} / {total_pacotes} / {CRC}\n')
+        ########## SITUAÇÃO FIO TIRADO ##########
 
-
-# class Server():
-
-#     def __init__(self, com1):
-
-#         self.handshake_on = True
-#         self.transmissao_on = False
-#         self.conclusao_on = False
-        
-#         self.com1 = com1
-
-#         self.num_pacote_anterior = 0
-#         self.num_pacote_recebido = 0
-
-#         self.id_arquivo = 0
-#         self.id_servidor = 14 
-
-#         self.tamanho_payload = 0
-#         self.pacote_para_recomeco = 0
-#         self.ultimo_pacote_sucedido = 0
-
-#         self.sem_erros = True
-
-#         self.mensagem = None
-
-        
-
-
-#     def sacrifica_byte(self):
-#         #Se chegamos até aqui, a comunicação foi aberta com sucesso. Faça um print para informar.
-#         print("Abriu a comunicação")
-#         print('Esperando 2 bytes de sacrifício')
-#         rxBuffer_0, nRx_0 = self.com1.getData(2)
-#         self.com1.rx.clearBuffer()
-#         time.sleep(1)
-#         print('Byte sacrificado')
-
-    # def handshake(self, rxBuffer):
-
-    #     print('Entrou no handshake')
-    #     ######################################## ERRO DE TIMEOUT ##########################################
-    #     # time.sleep(15)
-    #     # self.com1.rx.clearBuffer()
-    #     ####################################### ERRO DE TIMEOUT ##########################################
-
-    #     self.com1.sendData(np.asarray(rxBuffer))
-    #     print('Enviou o estou vivo')
-    #     self.handshake_on = False
-    #     self.transmissao_on = True
-
-    # def transmissao(self, rxBuffer, nRx):
-    #     print('\nEntrou na transmissao')
-
-    #     self.pacote_anterior = self.num_pacote
-    #     self.num_pacote = rxBuffer[2]
-    #     num_total = rxBuffer[3]
-    #     tamanho_payload = rxBuffer[4]
-    #     tamanho_pacote = tamanho_payload + 14
-
-    #     payload = rxBuffer[10:10+tamanho_payload]
-
-    #     print(f'\npayload: {payload} len: {len(payload)}\n')
-
-
-    #     print(f'\ntamanho_pacote: {tamanho_pacote}\n nRx: {nRx}')
-    #     print(f'\nnum_pacote: {self.num_pacote}\npacote_anterior + 1: {self.pacote_anterior + 1}')
-        
-    #     payload_esperado = tamanho_pacote == nRx
-    #     pacote_esperado = self.num_pacote == (self.pacote_anterior + 1)
-
-    #     if not payload_esperado:
-    #         print(f'Payload com tamanho errado. Tamanho esperado era {tamanho_payload} e foi recebido {nRx-14}\n')
-    #         self.sem_erros = False
-            
-    #         print(tamanho_payload.to_bytes(1,'big'))
-    #         solicitacao = b'\x03\x00' + tamanho_payload.to_bytes(1, 'big') + b'\x01\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00'
-    #         self.com1.sendData(np.asarray(solicitacao))
-    #     elif not pacote_esperado:
-    #         print(f'Número do pacote errado.\nCorreto deveria ser {self.pacote_anterior + 1} e foi recebido {self.num_pacote}')
-    #         self.sem_erros = False
-    #         solicitacao = b'\x03\x00' + (self.pacote_anterior+1).to_bytes(1, 'big') + b'\x01\x00\x00\x00\x00\x02\x00\x00\x00\x00\x00'
-    #         self.com1.sendData(np.asarray(solicitacao))
-    #     else:
-    #         print('Recebeu sem erros!')
-    #         self.sem_erros = True
-
-    #         if self.mensagem == None:
-    #             self.mensagem = payload
-    #         else:
-    #             self.mensagem += payload
-
-    #         confirmacao = b'\x02\x00' + bytes(self.num_pacote + 1) + b'\x01\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00'
-    #         self.com1.sendData(np.asarray(confirmacao))
-    #         print('Enviou confirmação de recebimento')
-        
-    #     if num_total == self.num_pacote and self.sem_erros:
-    #         self.transmissao_on = False
-    #         self.conclusao_on = True
-    #         print('Tudo pronto para iniciar conclusão.')
-    #         print(self.mensagem)
-            
-
-        
-
-    # def conclusao(self):
-        
-    #     imageW = "./imgs/recebidaCopia.png"
-    #     print("Salvando dados no arquivo:")
-    #     print(" - {}".format(imageW))
-    #     f = open(imageW, 'wb')
-    #     f.write(self.mensagem)
-    #     f.close()
-
-    #     sucesso = b'\x04\x00\x00\x01\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00'
-    #     self.com1.sendData(np.asarray(sucesso))
-    #     self.conclusao_on = False
-
-
-    # def recebe_pacote(self):
-    #     headRxBuffer, headNRx = self.com1.getData(10)
-    #     tamanho_payload = headRxBuffer[4]
-    #     print(f'Tamanho do payload é {tamanho_payload}')
-
-    #     if tamanho_payload > 0:
-    #         payloadRxBuffer, payloadNRx = self.com1.getData(tamanho_payload)
-    #         lenEop = self.com1.rx.getBufferLen()
-    #         eopRxBuffer, eopNRx = self.com1.getData(lenEop)
-    #         rxBuffer = headRxBuffer + payloadRxBuffer + eopRxBuffer
-    #         nRx = headNRx + payloadNRx + eopNRx
-    #         return rxBuffer, nRx
-        
-    #     eopRxBuffer, eopNRx = self.com1.getData(4)
-    #     rxBuffer = headRxBuffer + eopRxBuffer
-    #     nRx = headNRx + eopNRx
-    #     return rxBuffer, nRx
 
 def extrai_payload(rxBuffer):
     tamanho_payload = rxBuffer[5]
@@ -238,20 +134,21 @@ def main():
                     time.sleep(1)
                 else:
                     rxBuffer, nRx = server.recebe_pacote()
-                    tipo = rxBuffer[0]
-                    if tipo == 1:
-                        id_destino = rxBuffer[1]
-                        para_mim = server.id == id_destino
-                        if para_mim:
-                            server.ocioso = False
-                            time.sleep(1)
-                        else:
-                            time.sleep(1)
+                    if not rxBuffer == 0:
+                        tipo = rxBuffer[0]
+                        if tipo == 1:
+                            id_destino = rxBuffer[1]
+                            para_mim = server.id == id_destino
+                            if para_mim:
+                                server.ocioso = False
+                                time.sleep(1)
+                            else:
+                                time.sleep(1)
             else:
                 ### Inicia "na escuta!"
                 id_arquivo = rxBuffer[5]
                 numPckg = rxBuffer[4]
-                head = b'\x02\x00\x00\x01\x00' + id_arquivo.to_bytes(1, 'big') + b'\xCC\xDD\xAA\xBB'
+                head = b'\x02\x00\x00\x00\x00' + id_arquivo.to_bytes(1, 'big') + b'\x00\x00\x00\x00'
                 server.envia_pacote(head)
             ### Fim do handshake
             ### Inicio da recebimento do pacote de dados
@@ -270,35 +167,52 @@ def main():
                             if msg_recebida:
                                 verifica_t3 = False
                                 rxBuffer, nRx = server.recebe_pacote()
-                                tipo = rxBuffer[0]
-                                if tipo == 3:
-                                    ### pckg ok?
-                                    if pckg_ok:
-                                        payload = extrai_payload(rxBuffer)
-                                        atualiza_mensagem(server, payload)
-                                        # Envia msg t4
-                                        head = b''
-                                        server.envia_pacote(head)
-                                    else:
-                                        # Envia msg t6
-                                        head = b''
-                                        server.envia_pacote(head)
-                                        # Remove 1 de cont pois irá ser adicionado no loop while not server.sucesso e não deveria
-                                        server.cont -= 1
+                                if not rxBuffer == 0:
+                                    tipo = rxBuffer[0]
+                                    if tipo == 3:
+                                        ### pckg ok?
+                                        
+                                        tamanho_payload = rxBuffer[5]
+                                        print(f'Deveria ser 124: {10+tamanho_payload}')
+                                        pacote_correto = rxBuffer[4] == server.cont
+                                        pos_eop_ok = rxBuffer[10+tamanho_payload:] == b'\xAA\xBB\xCC\xDD'
+                                        pckg_ok = pacote_correto or pos_eop_ok
+
+                                        if pckg_ok:
+                                            print(f'Pacote {server.cont} recebido com sucesso')
+                                            payload = extrai_payload(rxBuffer)
+                                            atualiza_mensagem(server, payload)
+                                            # Envia msg t4
+                                            server.ultimo_pacote = rxBuffer[4]
+                                            head = b'\x04\x00\x00\x00\x00\x00\x00' + server.ultimo_pacote.to_bytes(1, 'big') + b'\x00\x00'
+                                            server.envia_pacote(head)
+                                        else:
+                                            # Envia msg t6
+                                            pacote_solicitado = server.ultimo_pacote + 1
+                                            if not pacote_correto:
+                                                print('Pacote errado')
+                                                head = b'\x06\x01\x00\x00\x00\x00' + pacote_solicitado.to_bytes(1, 'big') + server.ultimo_pacote.to_bytes(1, 'big') + b'\x00\x00'
+                                            elif not pos_eop_ok:
+                                                print('EOP na posição errada')
+                                                head = b'\x06\x02\x00\x00\x00\x00' + pacote_solicitado.to_bytes(1, 'big') + server.ultimo_pacote.to_bytes(1, 'big') + b'\x00\x00'
+                                            server.envia_pacote(head)
+                                            # Remove 1 de cont pois irá ser adicionado no loop while not server.sucesso e não deveria
+                                            server.cont -= 1
                             else:
                                 time.sleep(1)
-                                if timer2 - time.time() > 20:
+                                agora = time.time()
+                                if timer2 - agora > 20:
                                     server.ocioso = True
                                     server.ligado = False
                                     # Envia msg t5
-                                    head = b''
+                                    head = b'\x05\x00\x00\x00\x00\x00\x00\x00\x00\x00'
                                     server.envia_pacote(head)
                                     # Encerra comunicação
                                     verifica_t3 = False
                                 else:
-                                    if timer1 - time.time() > 2:
+                                    if timer1 - agora > 2:
                                         # Envia msg t4
-                                        head = b''
+                                        head = b'\x04\x00\x00\x00\x00\x00\x00' + server.ultimo_pacote.to_bytes(1, 'big') + b'\x00\x00'
                                         server.envia_pacote(head)
                                         # Reset timer
                                         timer1 = time.time()
