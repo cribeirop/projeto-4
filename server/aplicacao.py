@@ -44,7 +44,9 @@ class Server():
 
     def recebe_pacote(self):
         headRxBuffer, headNRx = self.com1.getData(10)
-        if headRxBuffer[0] == 5:
+        tipo = headRxBuffer[0]
+        if tipo == 5:
+            self.atualiza_arquivo(tipo=tipo)
             self.ligado = False
             self.ocioso = True
             self.com1.disable()
@@ -58,6 +60,7 @@ class Server():
             print(f'Tamanho do payload é {tamanho_payload}')
 
             if tamanho_payload > 0:
+                self.atualiza_arquivo(tamanho=tamanho_payload, pacote_enviado=headRxBuffer[4], total_pacotes=headRxBuffer[3], tipo=tipo)
                 payloadRxBuffer, payloadNRx = self.com1.getData(tamanho_payload)
                 lenEop = self.com1.rx.getBufferLen()
                 eopRxBuffer, eopNRx = self.com1.getData(lenEop)
@@ -65,14 +68,18 @@ class Server():
                 nRx = headNRx + payloadNRx + eopNRx
                 return rxBuffer, nRx
             
-            eopRxBuffer, eopNRx = self.com1.getData(4)
-            rxBuffer = headRxBuffer + eopRxBuffer
-            nRx = headNRx + eopNRx
-            return rxBuffer, nRx
+            else:
+                eopRxBuffer, eopNRx = self.com1.getData(4)
+                self.atualiza_arquivo(tipo=tipo)
+                rxBuffer = headRxBuffer + eopRxBuffer
+                nRx = headNRx + eopNRx
+                return rxBuffer, nRx
 
     def envia_pacote(self, head, payload=b'', eop=b'\xAA\xBB\xCC\xDD'):
         txBuffer = head + payload + eop
         self.com1.sendData(np.asarray(txBuffer))
+        tipo = head[0]
+        self.atualiza_arquivo(recebimento=False, tipo=tipo)
 
     def atualiza_arquivo(self, pacote_enviado=None, total_pacotes=None,instante=time.time(), recebimento=True, tipo=3, tamanho=14, CRC='' ):
         with open('server1.txt', 'a') as f:
