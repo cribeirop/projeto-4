@@ -39,7 +39,6 @@ class Server():
         print("Abriu a comunicação")
         print('Esperando 2 bytes de sacrifício')
         rxBuffer_0, nRx_0 = self.com1.getData(2)
-        self.com1.rx.clearBuffer()
         time.sleep(1)
 
     def recebe_pacote(self):
@@ -142,7 +141,6 @@ def main():
                 else:
                     print('Recebeu algo')
                     rxBuffer, nRx = server.recebe_pacote()
-                    print(f'Recebeu {rxBuffer}')
                     if not rxBuffer == None:
                         print('Entrou no if')
                         tipo = rxBuffer[0]
@@ -180,8 +178,7 @@ def main():
                         print('Contador menor ou igual que quantidade de pacotes')
                         timer1 = time.time()
                         timer2 = time.time()
-                        print(f'Timer 1: {timer1}')
-                        print(f'Timer 2: {timer2}')
+                
                         verifica_t3 = True
                         while verifica_t3:
                             ### Inicia "pacotes de dados"
@@ -191,13 +188,12 @@ def main():
                                 print('Recebeu mensagem')
                                 verifica_t3 = False
                                 rxBuffer, nRx = server.recebe_pacote()
-                                print(f'Recebeu {rxBuffer}')
                                 if rxBuffer == None:
                                     print('Recebeu None')
                                 else:
                                     tipo = rxBuffer[0]
                                     if tipo == 3:
-                                        print('Tipo 3')
+                                        
                                         ### pckg ok?
                                         
                                         tamanho_payload = rxBuffer[5]
@@ -234,7 +230,6 @@ def main():
                                             server.cont -= 1
                             else:
                                 time.sleep(1)
-                                print('Timer 1: {}'.format(timer1))
                                 
                                 agora = time.time()
                                 if (agora - timer2) > 20:
