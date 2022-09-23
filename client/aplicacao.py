@@ -1,3 +1,4 @@
+from modulefinder import packagePathMap
 from enlace import *
 import time
 import numpy as np
@@ -13,11 +14,21 @@ class Client:
 
         self.id = 15
 
+        self.com = enlace(serialName)
+        self.com.enable()
+
         self.num_total = len(self.imagem) // 114
         self.num_pacote = 1
 
         self.h8 = b'\x00'
         self.h9 = b'\x00'
+
+        self.erro_ordem = False
+        # self.erro_tempo = False
+
+    def disable(self):
+        self.com.disable()
+        return "Comunicação encerrada"
 
     def sacrifica_byte(self):
         time.sleep(.2)
@@ -43,15 +54,13 @@ class Client:
             self.head = self.h1+self.h2+self.h3+self.h4+self.h5+self.h6+self.h7+self.h8+self.h9
             self.pacote = self.head+self.payload+self.eop
             self.com.sendData(self.pacote)
-            start = time.time()
-            while self.com.rx.getIsEmpty():
-                pass
-            end = time.time()
-            if end - start <= 5:
+            time.sleep(5)
+            if self.com.rx.getIsEmpty():
+                ocioso = False
+            else:
                 rxBuffer, nRx = self.com.getData(14)
-                if rxBuffer[0] == 2 and rxBuffer[5] == id:
+                if rxBuffer[0] == 2 and rxBuffer[5] == self.id:
                     ocioso = True
-            else: ocioso = False
     
     def tipo_5(self): # handshake?
         self.payload = b'\x00'
@@ -68,8 +77,11 @@ class Client:
         self.pacote = self.head+self.payload+self.eop
         self.com.sendData(self.pacote)
 
+    def erro_interrupção(self): ...
+
     def tipo_3(self):
         pacotes_enviados = 0
+
         while self.num_pacote <= self.num_total:
             self.payload = b''
             if len(self.imagem) - pacotes_enviados < 0: 
@@ -77,6 +89,7 @@ class Client:
             else:
                 self.payload += self.imagem[pacotes_enviados:pacotes_enviados+114]
                 pacotes_enviados += 114
+
             self.eop = b'\xaa\xbb\xcc\xdd'
             self.h0 = b'\x03'
             self.h1 = b'\x00'
@@ -88,59 +101,90 @@ class Client:
             self.h7 = b'\x00'
             self.head = self.h1+self.h2+self.h3+self.h4+self.h5+self.h6+self.h7+self.h8+self.h9
             self.pacote = self.head+self.payload+self.eop
+
             enviado = False
             while enviado == False:
                 self.com.sendData(self.pacote)
+                start1 = time.time()
+                start2 = time.time()
                 msg_correta = False
                 while msg_correta == False:
-                    if self.com.rx.getIsEmpty():
-                        start = time.time()
-                        while self.com.rx.getIsEmpty():
-                            pass 
-                        end = time.time()
-                        if end - start <= 5:
-                            while self.com.rx.getIsEmpty():
-                                pass 
-                            end = time.time()
-                            if end - start <= 20:
+                    while self.com.rx.getIsEmpty() or self.com.getData(14)[0][0] != 4:
+                        # while self.com.rx.getIsEmpty():
+                        #     pass 
+                        if start1 - time.time() <= 5:
+                            # while self.com.rx.getIsEmpty():
+                            #     pass 
+                            if start2 - time.time() <= 20:
                                 rxBuffer, nRx = self.com.getData(14)
-                                if rxBuffer[0] == 6:
-                                    self.num_pacote -= 1
-                                    self.com.sendData(self.pacote)
-                                else: msg_correta = True
-                            else: 
+                                try:
+                                    if rxBuffer[0] == 6:
+                                        self.num_pacote = rxBuffer[6]
+                                        self.com.sendData(self.pacote)
+                                        start1 = time.time()
+                                        start2 = time.time()
+                                    msg_correta = False
+                                        # enviado = False
+                                except:
+                                    # self.erro_interrupção()
+                                    start = time.time()
+                                    while self.com.rx.getIsEmpty():
+                                        pass
+                                    if start - time.time() < 20:
+                                        enviado = True 
+                                    else:
+                                        self.disable()
+                            else: # erro de tempo... é automático?
                                 self.tipo_5()
-                                self.com.disable()
-                        else: 
+                                self.disable()
+                        
+                        else:
                             self.com.sendData(self.pacote)
-                            start = time.time()
-                            while self.com.rx.getIsEmpty():
-                                pass
-                            end = time.time()
-                            if end - start <= 20:
+                            start1 = time.time()
+                            # while self.com.rx.getIsEmpty():
+                            #     pass
+                            if start2 - time.time() <= 20:
                                 rxBuffer, nRx = self.com.getData(14)
-                                if rxBuffer[0] == 6:
-                                    self.num_pacote -= 1
-                                    self.com.sendData(self.pacote) 
-                                else: msg_correta = True
+                                try:
+                                    if rxBuffer[0] == 6:
+                                        self.num_pacote = rxBuffer[6]
+                                        self.com.sendData(self.pacote)
+                                        start1 = time.time()
+                                        start2 = time.time()
+                                    msg_correta = False
+                                        # enviado = False
+                                except:
+                                    # self.erro_interrupção()
+                                    start = time.time()
+                                    while self.com.rx.getIsEmpty():
+                                        pass
+                                    if start - time.time() < 20:
+                                        enviado = True 
+                                    else:
+                                        self.disable()
                             else:
                                 self.tipo_5()
-                                self.com.disable()                            
-                    rxBuffer, nRx = self.com.getData(14)
-                    if self.com.rx.getIsEmpty() == False:
+                                self.disable()    
+                    else:                        
+                        rxBuffer, nRx = self.com.getData(14)
                         if rxBuffer[0] == 4:
-                            self.num_pacote += 1
-                            enviado = True
-                            msg_correta = True
+                            if self.erro_ordem == True: self.num_pacote += 10
+                            else:
+                                self.num_pacote += 1
+                                enviado = True
+                                msg_correta = True
+                        else: ...
+        if self.num_pacote == self.num_total:
+            self.disable()
+    
+    def main(self):
+        self.sacrifica_byte()
+        self.tipo_1()
+        self.tipo_5()
 
 if __name__ == "__main__":
     try:
-        com = enlace(serialName)
-        com.enable()
-        Client.tipo_1(14)
-        Client.tipo_3()
-    except Exception as erro:
-        print("ops! :-\\")
-        print(erro)
-        com.disable()
+        Client.main()
 
+    except Exception as erro:
+        Client.disable()
