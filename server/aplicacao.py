@@ -214,6 +214,9 @@ def main():
                                             print(f'Novo ultimo pacote recebido: {rxBuffer[4]}')
                                             server.ultimo_pacote = rxBuffer[4]
                                             head = b'\x04\x00\x00\x00\x00\x00\x00' + server.ultimo_pacote.to_bytes(1, 'big') + b'\x00\x00'
+                                            ################### TIMEOUT ###################
+                                            # time.sleep(25)
+                                            ################### TIMEOUT ###################
                                             server.envia_pacote(head)
                                             print('Enviou t4')
                                         else:
