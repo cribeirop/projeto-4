@@ -31,7 +31,7 @@ class Server():
         self.cont = 0
         self.sucesso = False
         self.mensagem = None
-        self.ultimo_pacote = -1
+        self.ultimo_pacote = 0
         self.com1 = com1
 
     def sacrifica_byte(self):
@@ -53,11 +53,10 @@ class Server():
             print("-------------------------")
             print("Comunicação encerrada por TIME OUT no CLIENTE")
             print("-------------------------")
-            return 0,0
+            return None, None
         
         else:
             tamanho_payload = headRxBuffer[5]
-            print(f'Tamanho do payload é {tamanho_payload}')
 
             if tamanho_payload > 0:
                 self.atualiza_arquivo(tamanho=tamanho_payload, pacote_enviado=headRxBuffer[4], total_pacotes=headRxBuffer[3], tipo=tipo)
@@ -81,7 +80,7 @@ class Server():
         tipo = head[0]
         self.atualiza_arquivo(recebimento=False, tipo=tipo)
 
-    def atualiza_arquivo(self, pacote_enviado=None, total_pacotes=None,instante=time.time(), recebimento=True, tipo=3, tamanho=14, CRC='' ):
+    def atualiza_arquivo(self, pacote_enviado=None, total_pacotes=None,instante=time.ctime(time.time()), recebimento=True, tipo=3, tamanho=14, CRC='' ):
         with open('server1.txt', 'a') as f:
             operacao = 'Recebimento' if recebimento else 'Envio'
             if recebimento:
@@ -148,64 +147,90 @@ def main():
         while server.ligado:
             ### Início do handshake
             if server.ocioso:
+                print('Iniciou handshake')
                 if server.com1.rx.getIsEmpty():
+                    print('Recebeu nada. Continua ocioso')
                     time.sleep(1)
                 else:
+                    print('Recebeu algo')
                     rxBuffer, nRx = server.recebe_pacote()
-                    if not rxBuffer == 0:
+                    print(f'Recebeu {rxBuffer}')
+                    if not rxBuffer == None:
+                        print('Entrou no if')
                         tipo = rxBuffer[0]
                         if tipo == 1:
+                            print('Recebeu handshake')
                             id_destino = rxBuffer[1]
+                            print('Id enviado pelo client: ', id_destino)
+                            print('Id servidor: ', server.id)
                             para_mim = server.id == id_destino
                             if para_mim:
+                                print('Server ocioso é False')
                                 server.ocioso = False
                                 time.sleep(1)
                             else:
+                                print('Server ocioso continua True. ID destino: {}'.format(id_destino))
                                 time.sleep(1)
             else:
                 ### Inicia "na escuta!"
+                print('Não ocioso. Inicia "na escuta!"')
                 id_arquivo = rxBuffer[5]
                 numPckg = rxBuffer[4]
+                quantPckg = rxBuffer[3]
                 head = b'\x02\x00\x00\x00\x00' + id_arquivo.to_bytes(1, 'big') + b'\x00\x00\x00\x00'
                 server.envia_pacote(head)
             ### Fim do handshake
             ### Inicio da recebimento do pacote de dados
                 
                 while not server.sucesso and not server.ocioso:
+                    print('Iniciou recebimento de pacotes')
                     server.cont += 1
-                    if server.cont <= numPckg:
-                        
+                    print('Contador: ', server.cont)
+                    print('Num pacote: ', numPckg)
+                    print('Quant pacotes: ', quantPckg)
+                    if server.cont <= quantPckg:
+                        print('Contador menor ou igual que quantidade de pacotes')
                         timer1 = time.time()
                         timer2 = time.time()
-
+                        print(f'Timer 1: {timer1}')
+                        print(f'Timer 2: {timer2}')
                         verifica_t3 = True
                         while verifica_t3:
                             ### Inicia "pacotes de dados"
+                            print('"pacotes de dados"')
                             msg_recebida = not server.com1.rx.getIsEmpty()
                             if msg_recebida:
+                                print('Recebeu mensagem')
                                 verifica_t3 = False
                                 rxBuffer, nRx = server.recebe_pacote()
-                                if not rxBuffer == 0:
+                                print(f'Recebeu {rxBuffer}')
+                                if rxBuffer == None:
+                                    print('Recebeu None')
+                                else:
                                     tipo = rxBuffer[0]
                                     if tipo == 3:
+                                        print('Tipo 3')
                                         ### pckg ok?
                                         
                                         tamanho_payload = rxBuffer[5]
-                                        print(f'Deveria ser 124: {10+tamanho_payload}')
+                                        print(f'Deveria ser 114: {tamanho_payload}')
                                         pacote_correto = rxBuffer[4] == server.cont
                                         pos_eop_ok = rxBuffer[10+tamanho_payload:] == b'\xAA\xBB\xCC\xDD'
                                         pckg_ok = pacote_correto or pos_eop_ok
-
+                                        print('pckg_ok: ', pckg_ok)
                                         if pckg_ok:
                                             print(f'Pacote {server.cont} recebido com sucesso')
                                             payload = extrai_payload(rxBuffer)
                                             atualiza_mensagem(server, payload)
                                             # Envia msg t4
+                                            print(f'Novo ultimo pacote recebido: {rxBuffer[4]}')
                                             server.ultimo_pacote = rxBuffer[4]
                                             head = b'\x04\x00\x00\x00\x00\x00\x00' + server.ultimo_pacote.to_bytes(1, 'big') + b'\x00\x00'
                                             server.envia_pacote(head)
+                                            print('Enviou t4')
                                         else:
                                             # Envia msg t6
+                                            print('ERRO. Enviou t6')
                                             pacote_solicitado = server.ultimo_pacote + 1
                                             if not pacote_correto:
                                                 print('Pacote errado')
@@ -218,8 +243,11 @@ def main():
                                             server.cont -= 1
                             else:
                                 time.sleep(1)
+                                print('Timer 1: {}'.format(timer1))
+                                
                                 agora = time.time()
-                                if timer2 - agora > 20:
+                                if (agora - timer2) > 20:
+                                    print('TIMEOUT')
                                     server.ocioso = True
                                     server.ligado = False
                                     # Envia msg t5
@@ -227,15 +255,21 @@ def main():
                                     server.envia_pacote(head)
                                     # Encerra comunicação
                                     verifica_t3 = False
-                                else:
-                                    if timer1 - agora > 2:
-                                        # Envia msg t4
-                                        head = b'\x04\x00\x00\x00\x00\x00\x00' + server.ultimo_pacote.to_bytes(1, 'big') + b'\x00\x00'
-                                        server.envia_pacote(head)
-                                        # Reset timer
-                                        timer1 = time.time()
+                                elif (agora - timer1) > 2:
+                                    print('Passaram 2 segundos sem receber')
+                                    # Envia msg t4
+                                    
+                                    head = b'\x04\x00\x00\x00\x00\x00\x00' + server.ultimo_pacote.to_bytes(1, 'big') + b'\x00\x00'
+                                    server.envia_pacote(head)
+                                    print('Enviou t4. 2 segundos sem receber')
+                                    # Reset timer
+                                    timer1 = time.time()
+                                    
                     else:
+                        print('Contador maior que o número de pacotes. SUCESSO')
                         server.sucesso = True
+                        server.ligado = False
+                        server.ocioso = True
                         salva_dados(server.mensagem)
         # Encerra comunicação
         print("-------------------------")
