@@ -81,35 +81,23 @@ class Server():
         self.atualiza_arquivo(recebimento=False, tipo=tipo)
 
     def atualiza_arquivo(self, pacote_enviado=None, total_pacotes=None,instante=time.ctime(time.time()), recebimento=True, tipo=3, tamanho=14, CRC='' ):
-        with open('server1.txt', 'a') as f:
+        ########## ERRO ORDEM DOS PACOTES ##########
+        # caso = 2
+        ########## ERRO ORDEM DOS PACOTES ##########
+        ########## ERRO TIME OUT ##########
+        # caso = 3
+        ########## ERRO TIME OUT ##########
+        ########## SITUAÇÃO FIO TIRADO ##########
+        # caso = 4
+        ########## SITUAÇÃO FIO TIRADO ##########
+        caso = 1
+        with open(f'server{caso}.txt', 'a') as f:
             operacao = 'Recebimento' if recebimento else 'Envio'
             if recebimento:
                 f.write(f'{instante} / {operacao} / {tipo} / {tamanho} / {pacote_enviado} / {total_pacotes} / {CRC}\n')
             else:
                 f.write(f'{instante} / {operacao} / {tipo} / {tamanho} / {CRC}\n')
-        ########## ERRO ORDEM DOS PACOTES ##########
-        # with open('server2.txt', 'a') as f:
-        #     operacao = 'Recebimento' if recebimento else 'Envio'
-            # if recebimento:
-            #     f.write(f'{instante} / {operacao} / {tipo} / {tamanho} / {pacote_enviado} / {total_pacotes} / {CRC}\n')
-            # else:
-            #     f.write(f'{instante} / {operacao} / {tipo} / {tamanho} / {CRC}\n')
-        ########## ERRO ORDEM DOS PACOTES ##########
-        ########## ERRO TIME OUT ##########
-        # with open('server3.txt', 'a') as f:
-            # operacao = 'Recebimento' if recebimento else 'Envio'
-            # if recebimento:
-            #     f.write(f'{instante} / {operacao} / {tipo} / {tamanho} / {pacote_enviado} / {total_pacotes} / {CRC}\n')
-            # else:
-            #     f.write(f'{instante} / {operacao} / {tipo} / {tamanho} / {CRC}\n')        ########## ERRO TIME OUT ##########
-        ########## SITUAÇÃO FIO TIRADO ##########
-        # with open('server4.txt', 'a') as f:
-        #     operacao = 'Recebimento' if recebimento else 'Envio'
-            # if recebimento:
-            #     f.write(f'{instante} / {operacao} / {tipo} / {tamanho} / {pacote_enviado} / {total_pacotes} / {CRC}\n')
-            # else:
-            #     f.write(f'{instante} / {operacao} / {tipo} / {tamanho} / {CRC}\n')
-        ########## SITUAÇÃO FIO TIRADO ##########
+        
 
 
 def extrai_payload(rxBuffer):
