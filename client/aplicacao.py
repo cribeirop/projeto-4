@@ -1,23 +1,25 @@
-from modulefinder import packagePathMap
 from enlace import *
 import time
 import numpy as np
 import random
 
-serialName = "COM4"
+serialName = "COM3"
 
 class Client:
     def __init__(self):
 
-        self.dir = "./imgs/imageR.png"
+        self.dir = "./client/imgs/imageR.png"
         self.imagem = open(self.dir, 'rb').read()
 
-        self.id = 15
+        self.num_servidor = 14
+        self.id = 0
 
+        print("Iniciou o main")
         self.com = enlace(serialName)
         self.com.enable()
+        print("Abriu a comunicacao\n")
 
-        self.num_total = len(self.imagem) // 114
+        self.num_total = (len(self.imagem) // 114) + 1
         self.num_pacote = 1
 
         self.h8 = b'\x00'
@@ -28,7 +30,7 @@ class Client:
 
     def disable(self):
         self.com.disable()
-        return "Comunicação encerrada"
+        print("\n\n__________Comunicacao encerrada__________")
 
     def sacrifica_byte(self):
         time.sleep(.2)
@@ -38,31 +40,36 @@ class Client:
     def converte_em_binario(self, num):
         return (num).to_bytes(1, byteorder='big')
     
-    def tipo_1(self, num_servidor):
+    def tipo_1(self):
         ocioso = False
         while ocioso == False:
-            self.payload = b'\x00'
-            self.eop = b'\xaa\xbb\xcc\xdd'
+            self.payload = b''
+            self.eop = b'\xAA\xBB\xCC\xDD'
             self.h0 = b'\x01'
-            self.h1 = self.converte_em_binario(num_servidor)
+            self.h1 = self.converte_em_binario(self.num_servidor)
             self.h2 = b'\x00'
             self.h3 = self.converte_em_binario(self.num_total)
             self.h4 = b'\x00'
             self.h5 = self.converte_em_binario(self.id)
             self.h6 = b'\x00'
             self.h7 = b'\x00'
-            self.head = self.h1+self.h2+self.h3+self.h4+self.h5+self.h6+self.h7+self.h8+self.h9
+            self.head = self.h0+self.h1+self.h2+self.h3+self.h4+self.h5+self.h6+self.h7+self.h8+self.h9
             self.pacote = self.head+self.payload+self.eop
             self.com.sendData(self.pacote)
             time.sleep(5)
             if self.com.rx.getIsEmpty():
+                print("Servidor ocioso", end="")
+                for i in range(10):
+                    print(".", end="")
+                    time.sleep(0.5)
                 ocioso = False
             else:
                 rxBuffer, nRx = self.com.getData(14)
                 if rxBuffer[0] == 2 and rxBuffer[5] == self.id:
+                    print("Servidor esta vivo!\n")
                     ocioso = True
     
-    def tipo_5(self): # handshake?
+    def tipo_5(self): 
         self.payload = b'\x00'
         self.eop = b'\xaa\xbb\xcc\xdd'
         self.h0 = b'\x05'
@@ -73,11 +80,18 @@ class Client:
         self.h5 = self.converte_em_binario(self.id)
         self.h6 = b'\x00'
         self.h7 = b'\x00'
-        self.head = self.h1+self.h2+self.h3+self.h4+self.h5+self.h6+self.h7+self.h8+self.h9
+        self.head = self.h0+self.h1+self.h2+self.h3+self.h4+self.h5+self.h6+self.h7+self.h8+self.h9
         self.pacote = self.head+self.payload+self.eop
         self.com.sendData(self.pacote)
+        print("\nTempo limite excedido")
 
     def erro_interrupção(self): ...
+
+    def printw(self, texto=""): 
+        for i in range(10):
+            print(texto, end="")
+            print(".", end="")
+            time.sleep(1)
 
     def tipo_3(self):
         pacotes_enviados = 0
@@ -89,6 +103,7 @@ class Client:
             else:
                 self.payload += self.imagem[pacotes_enviados:pacotes_enviados+114]
                 pacotes_enviados += 114
+            print(f"\nPayload {self.num_pacote}: {self.payload[0:10]}... | Tamanho: {len(self.payload)}")
 
             self.eop = b'\xaa\xbb\xcc\xdd'
             self.h0 = b'\x03'
@@ -99,23 +114,25 @@ class Client:
             self.h5 = self.converte_em_binario(len(self.payload))
             self.h6 = b'\x00'
             self.h7 = b'\x00'
-            self.head = self.h1+self.h2+self.h3+self.h4+self.h5+self.h6+self.h7+self.h8+self.h9
+            self.head = self.h0+self.h1+self.h2+self.h3+self.h4+self.h5+self.h6+self.h7+self.h8+self.h9
             self.pacote = self.head+self.payload+self.eop
 
             enviado = False
             while enviado == False:
-                self.com.sendData(self.pacote)
+                self.com.sendData(self.pacote) 
+                print("Enviou o pacote", end="")
                 start1 = time.time()
                 start2 = time.time()
                 msg_correta = False
                 while msg_correta == False:
                     while self.com.rx.getIsEmpty() or self.com.getData(14)[0][0] != 4:
+                        self.printw()
                         # while self.com.rx.getIsEmpty():
                         #     pass 
-                        if start1 - time.time() <= 5:
+                        if time.time() - start1 <= 5:
                             # while self.com.rx.getIsEmpty():
                             #     pass 
-                            if start2 - time.time() <= 20:
+                            if time.time() - start2 <= 20:
                                 rxBuffer, nRx = self.com.getData(14)
                                 try:
                                     if rxBuffer[0] == 6:
@@ -130,7 +147,7 @@ class Client:
                                     start = time.time()
                                     while self.com.rx.getIsEmpty():
                                         pass
-                                    if start - time.time() < 20:
+                                    if time.time() - start< 20:
                                         enviado = True 
                                     else:
                                         self.disable()
@@ -143,7 +160,7 @@ class Client:
                             start1 = time.time()
                             # while self.com.rx.getIsEmpty():
                             #     pass
-                            if start2 - time.time() <= 20:
+                            if time.time() - start2 <= 20:
                                 rxBuffer, nRx = self.com.getData(14)
                                 try:
                                     if rxBuffer[0] == 6:
@@ -170,21 +187,24 @@ class Client:
                         if rxBuffer[0] == 4:
                             if self.erro_ordem == True: self.num_pacote += 10
                             else:
+                                if self.num_pacote == self.num_total:
+                                    self.disable()
                                 self.num_pacote += 1
                                 enviado = True
                                 msg_correta = True
-                        else: ...
+                        # else: ...
         if self.num_pacote == self.num_total:
             self.disable()
     
     def main(self):
-        self.sacrifica_byte()
-        self.tipo_1()
-        self.tipo_5()
+        try:
+            self.sacrifica_byte()
+            self.tipo_1()
+            self.tipo_3()
+        except Exception as erro:
+            print(erro)
+            print("ops! :-\\")
+            self.disable()
 
 if __name__ == "__main__":
-    try:
-        Client.main()
-
-    except Exception as erro:
-        Client.disable()
+    Client().main()
