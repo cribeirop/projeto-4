@@ -1,3 +1,4 @@
+from modulefinder import packagePathMap
 from enlace import *
 import time
 import numpy as np
@@ -21,6 +22,9 @@ class Client:
 
         self.h8 = b'\x00'
         self.h9 = b'\x00'
+
+        self.erro_ordem = False
+        # self.erro_tempo = False
 
     def disable(self):
         self.com.disable()
@@ -73,6 +77,8 @@ class Client:
         self.pacote = self.head+self.payload+self.eop
         self.com.sendData(self.pacote)
 
+    def erro_interrupção(self): ...
+
     def tipo_3(self):
         pacotes_enviados = 0
 
@@ -103,50 +109,76 @@ class Client:
                 start2 = time.time()
                 msg_correta = False
                 while msg_correta == False:
-                    if self.com.rx.getIsEmpty() or self.com.getData(14)[0][0] != 4:
-                        while self.com.rx.getIsEmpty():
-                            pass 
+                    while self.com.rx.getIsEmpty() or self.com.getData(14)[0][0] != 4:
+                        # while self.com.rx.getIsEmpty():
+                        #     pass 
                         if start1 - time.time() <= 5:
-                            while self.com.rx.getIsEmpty():
-                                pass 
+                            # while self.com.rx.getIsEmpty():
+                            #     pass 
                             if start2 - time.time() <= 20:
                                 rxBuffer, nRx = self.com.getData(14)
-                                if rxBuffer[0] == 6:
-                                    self.num_pacote = rxBuffer[6]
-                                    self.com.sendData(self.pacote)
-                                    start1 = time.time()
-                                    start2 = time.time()
-                                msg_correta = False
-                            else: 
+                                try:
+                                    if rxBuffer[0] == 6:
+                                        self.num_pacote = rxBuffer[6]
+                                        self.com.sendData(self.pacote)
+                                        start1 = time.time()
+                                        start2 = time.time()
+                                    msg_correta = False
+                                        # enviado = False
+                                except:
+                                    # self.erro_interrupção()
+                                    start = time.time()
+                                    while self.com.rx.getIsEmpty():
+                                        pass
+                                    if start - time.time() < 20:
+                                        enviado = True 
+                                    else:
+                                        self.disable()
+                            else: # erro de tempo... é automático?
                                 self.tipo_5()
                                 self.disable()
-                        else: 
+                        
+                        else:
                             self.com.sendData(self.pacote)
                             start1 = time.time()
-                            while self.com.rx.getIsEmpty():
-                                pass
+                            # while self.com.rx.getIsEmpty():
+                            #     pass
                             if start2 - time.time() <= 20:
                                 rxBuffer, nRx = self.com.getData(14)
-                                if rxBuffer[0] == 6:
-                                    self.num_pacote = rxBuffer[6]
-                                    self.com.sendData(self.pacote) 
-                                    start1 = time.time()
-                                    start2 = time.time()
-                                msg_correta = False
+                                try:
+                                    if rxBuffer[0] == 6:
+                                        self.num_pacote = rxBuffer[6]
+                                        self.com.sendData(self.pacote)
+                                        start1 = time.time()
+                                        start2 = time.time()
+                                    msg_correta = False
+                                        # enviado = False
+                                except:
+                                    # self.erro_interrupção()
+                                    start = time.time()
+                                    while self.com.rx.getIsEmpty():
+                                        pass
+                                    if start - time.time() < 20:
+                                        enviado = True 
+                                    else:
+                                        self.disable()
                             else:
                                 self.tipo_5()
                                 self.disable()    
                     else:                        
                         rxBuffer, nRx = self.com.getData(14)
                         if rxBuffer[0] == 4:
-                            self.num_pacote += 1
-                            enviado = True
-                            msg_correta = True
+                            if self.erro_ordem == True: self.num_pacote += 10
+                            else:
+                                self.num_pacote += 1
+                                enviado = True
+                                msg_correta = True
                         else: ...
         if self.num_pacote == self.num_total:
             self.disable()
     
     def main(self):
+        self.sacrifica_byte()
         self.tipo_1()
         self.tipo_5()
 
