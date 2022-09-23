@@ -28,6 +28,29 @@ class Client:
         self.erro_ordem = False
         # self.erro_tempo = False
 
+    def atualiza_arquivo(self, pacote_enviado=None, total_pacotes=None,instante=time.ctime(time.time()), envio=True, tipo=3, tamanho=128, CRC='' ):
+        ########## ERRO ORDEM DOS PACOTES ##########
+        # caso = 2
+        ########## ERRO ORDEM DOS PACOTES ##########
+        ########## ERRO TIME OUT ##########
+        # caso = 3
+        ########## ERRO TIME OUT ##########
+        ########## SITUAÇÃO FIO TIRADO ##########
+        # caso = 4
+        ########## SITUAÇÃO FIO TIRADO ##########
+        caso = 1
+        with open(f'server{caso}.txt', 'a') as f:
+            operacao = 'Envio' if envio else 'Recebimento'
+            if envio:
+                if tipo == 1:
+                    f.write(f'{instante} / {operacao} / {tipo} / {tamanho} / {CRC}\n')
+                elif tipo == 3:
+                    f.write(f'{instante} / {operacao} / {tipo} / {tamanho} / {pacote_enviado} / {total_pacotes} / {CRC}\n')
+                elif tipo == 5:
+                    f.write(f'{instante} / {operacao} / {tipo} / {tamanho} / {CRC}\n')
+            else:
+                f.write(f'{instante} / {operacao} / {tipo} / {tamanho} / {CRC}\n')
+
     def disable(self):
         self.com.disable()
         print("\n\n__________Comunicacao encerrada__________")
@@ -56,6 +79,7 @@ class Client:
             self.head = self.h0+self.h1+self.h2+self.h3+self.h4+self.h5+self.h6+self.h7+self.h8+self.h9
             self.pacote = self.head+self.payload+self.eop
             self.com.sendData(self.pacote)
+            self.atualiza_arquivo(tipo=1, tamanho=14)
             time.sleep(5)
             if self.com.rx.getIsEmpty():
                 print("Servidor ocioso", end="")
@@ -65,12 +89,13 @@ class Client:
                 ocioso = False
             else:
                 rxBuffer, nRx = self.com.getData(14)
+                self.atualiza_arquivo(tipo=rxBuffer[0], tamanho=nRx, envio=False)
                 if rxBuffer[0] == 2 and rxBuffer[5] == self.id:
                     print("Servidor esta vivo!\n")
                     ocioso = True
     
     def tipo_5(self): 
-        self.payload = b'\x00'
+        self.payload = b''
         self.eop = b'\xaa\xbb\xcc\xdd'
         self.h0 = b'\x05'
         self.h1 = b'\x00'
@@ -83,6 +108,7 @@ class Client:
         self.head = self.h0+self.h1+self.h2+self.h3+self.h4+self.h5+self.h6+self.h7+self.h8+self.h9
         self.pacote = self.head+self.payload+self.eop
         self.com.sendData(self.pacote)
+        self.atualiza_arquivo(tipo=5, tamanho=14)
         print("\nTempo limite excedido")
 
     def erro_interrupção(self): ...
@@ -120,12 +146,15 @@ class Client:
             enviado = False
             while enviado == False:
                 self.com.sendData(self.pacote) 
+                self.atualiza_arquivo(tamanho=len(self.pacote), pacote_enviado=self.num_pacote, total_pacotes=self.num_total)
                 print("Enviou o pacote", end="")
                 start1 = time.time()
                 start2 = time.time()
                 msg_correta = False
                 while msg_correta == False:
-                    while self.com.rx.getIsEmpty() or self.com.getData(14)[0][0] != 4:
+                    rxBuffer, nRx = self.com.getData(14)
+                    self.atualiza_arquivo(tipo=rxBuffer[0], tamanho=nRx, envio=False)
+                    while self.com.rx.getIsEmpty() or rxBuffer[0] != 4:
                         self.printw()
                         # while self.com.rx.getIsEmpty():
                         #     pass 
@@ -134,10 +163,12 @@ class Client:
                             #     pass 
                             if time.time() - start2 <= 20:
                                 rxBuffer, nRx = self.com.getData(14)
+                                self.atualiza_arquivo(tipo=rxBuffer[0], tamanho=nRx, envio=False)
                                 try:
                                     if rxBuffer[0] == 6:
                                         self.num_pacote = rxBuffer[6]
                                         self.com.sendData(self.pacote)
+                                        self.atualiza_arquivo(tamanho=len(self.pacote), pacote_enviado=self.num_pacote, total_pacotes=self.num_total)
                                         start1 = time.time()
                                         start2 = time.time()
                                     msg_correta = False
@@ -157,15 +188,18 @@ class Client:
                         
                         else:
                             self.com.sendData(self.pacote)
+                            self.atualiza_arquivo(tamanho=len(self.pacote), pacote_enviado=self.num_pacote, total_pacotes=self.num_total)
                             start1 = time.time()
                             # while self.com.rx.getIsEmpty():
                             #     pass
                             if time.time() - start2 <= 20:
                                 rxBuffer, nRx = self.com.getData(14)
+                                self.atualiza_arquivo(tipo=rxBuffer[0], tamanho=nRx, envio=False)
                                 try:
                                     if rxBuffer[0] == 6:
                                         self.num_pacote = rxBuffer[6]
                                         self.com.sendData(self.pacote)
+                                        self.atualiza_arquivo(tamanho=len(self.pacote), pacote_enviado=self.num_pacote, total_pacotes=self.num_total)
                                         start1 = time.time()
                                         start2 = time.time()
                                     msg_correta = False
@@ -184,6 +218,7 @@ class Client:
                                 self.disable()    
                     else:                        
                         rxBuffer, nRx = self.com.getData(14)
+                        self.atualiza_arquivo(tipo=rxBuffer[0], tamanho=nRx, envio=False)
                         if rxBuffer[0] == 4:
                             if self.erro_ordem == True: self.num_pacote += 10
                             else:
