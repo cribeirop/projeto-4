@@ -63,7 +63,7 @@ class Client:
 def main():
     try:
         print("Iniciou o main")
-        serialName = "COM3"
+        serialName = "COM5"
         #declaramos um objeto do tipo enlace com o nome "com". Essa é a camada inferior à aplicação. Observe que um parametro
         #para declarar esse objeto é o nome da porta.
         com1 = enlace(serialName)
