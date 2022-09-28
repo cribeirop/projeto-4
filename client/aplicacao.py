@@ -1,4 +1,5 @@
 from enlace import *
+import numpy as np
 
 class Client:
     def __init__(self, com1):
