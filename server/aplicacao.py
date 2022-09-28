@@ -86,10 +86,10 @@ class Server():
         caso = 2
         ########## ERRO ORDEM DOS PACOTES ##########
         ########## ERRO TIME OUT ##########
-        # caso = 3
+        #caso = 3
         ########## ERRO TIME OUT ##########
         ########## SITUAÇÃO FIO TIRADO ##########
-        # caso = 4
+        #caso = 4
         ########## SITUAÇÃO FIO TIRADO ##########
         #caso = 1
         with open(f'server{caso}.txt', 'a') as f:
@@ -207,7 +207,7 @@ def main():
                                         print(f'Deveria ser 114: {tamanho_payload}')
                                         pacote_correto = rxBuffer[4] == server.cont
                                         pos_eop_ok = rxBuffer[10+tamanho_payload:] == b'\xAA\xBB\xCC\xDD'
-                                        pckg_ok = pacote_correto or pos_eop_ok
+                                        pckg_ok = pacote_correto and pos_eop_ok
                                         print('pckg_ok: ', pckg_ok)
                                         if pckg_ok:
                                             print(f'Pacote {server.cont} recebido com sucesso')
@@ -217,7 +217,7 @@ def main():
                                             print(f'Novo ultimo pacote recebido: {rxBuffer[4]}')
                                             server.ultimo_pacote = rxBuffer[4]
                                             head = b'\x04\x00\x00\x00\x00\x00\x00' + server.ultimo_pacote.to_bytes(1, 'big') + b'\x00\x00'
-                                            
+
                                             server.envia_pacote(head)
                                             print('Enviou t4')
                                         else:

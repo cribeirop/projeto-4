@@ -13,6 +13,7 @@ class Client:
         self.cont = 0
         self.sucesso = False
         self.encerrou = False
+        self.erre=True
     
     def sacrifica_byte(self):
         #Se chegamos até aqui, a comunicação foi aberta com sucesso. Faça um print para informar.
@@ -30,10 +31,10 @@ class Client:
         caso = 2
         ########## ERRO ORDEM DOS PACOTES ##########
         ########## ERRO TIME OUT ##########
-        # caso = 3
+        #caso = 3
         ########## ERRO TIME OUT ##########
         ########## SITUAÇÃO FIO TIRADO ##########
-        # caso = 4
+        #caso = 4
         ########## SITUAÇÃO FIO TIRADO ##########
         #caso = 1
         with open(f'client{caso}.txt', 'a') as f:
@@ -79,6 +80,7 @@ def main():
         while not client.inicia:
             print("Quero falar com você")
             # t1
+            
             head = b'\x01' + client.id_server.to_bytes(1, 'big') + b'\x00' + client.numPck.to_bytes(1, 'big') + b'\x00' + client.id_arquivo.to_bytes(1, 'big') + b'\x00\x00\x00\x00'
             client.envia_pacote(head)
             client.atualiza_arquivo(tipo=head[0], tamanho=14)
@@ -98,6 +100,9 @@ def main():
             if client.cont <= client.numPck:
                 client.cont += 1
                 # t3
+                if client.erre:
+                    client.cont = 2
+                    client.erre=False
                 payload = client.mensagem[(client.cont-1)*114:(client.cont)*114] if client.cont < client.numPck else client.mensagem[(client.cont-1)*114:]
                 head = b'\x03\x00\x00' + client.numPck.to_bytes(1, 'big') + client.cont.to_bytes(1, 'big') + len(payload).to_bytes(1, 'big') + b'\x00\x00\x00\x00'
                 client.envia_pacote(head, payload=payload)
@@ -109,30 +114,41 @@ def main():
                 # Time out
                 timer2 = time.time()
                 print("Setou Timer1 e Timer2")
+                tipo = head[0]
+                msg_recebida = not client.com1.rx.getIsEmpty()
+                if msg_recebida:
+                    rxBuffer, nRx = client.recebe_pacote()
+                    tipo = rxBuffer[0]
+                    client.atualiza_arquivo(envio=False, tipo=tipo, tamanho=nRx)
 
-                rxBuffer, nRx = client.recebe_pacote()
-                tipo = rxBuffer[0]
-                client.atualiza_arquivo(envio=False, tipo=tipo, tamanho=nRx)
+                
 
-                ################### TIMEOUT ###################
-                #time.sleep(25)
-                ################### TIMEOUT ###################
-
-                while not tipo == 4:
+                while not tipo == 4 and not client.encerrou:
                     print('Não recebi tipo 4')
                     if time.time() - timer1 > 5:
+                        print('Mais do que 5 segundos')
                         # t3
+                        client.cont -= 1
                         payload = client.mensagem[(client.cont-1)*114:(client.cont)*114] if client.cont < client.numPck else client.mensagem[(client.cont-1)*114:]
                         head = b'\x03\x00\x00' + client.numPck.to_bytes(1, 'big') + client.cont.to_bytes(1, 'big') + len(payload).to_bytes(1, 'big') + b'\x00\x00\x00\x00'
-                        print(f'Pacote sendo enviado: {client.numPck}')
+                        print(f'Pacote sendo enviado: {client.cont}')
                         client.envia_pacote(head, payload=payload)
                         client.atualiza_arquivo(pacote_enviado=client.cont, total_pacotes=client.numPck)
                         print(f'Enviou pacote {client.cont}')
                         timer1 = time.time()
-                        rxBuffer, nRx = client.recebe_pacote()
-                        tipo = rxBuffer[0]
-                        client.atualiza_arquivo(envio=False, tipo=tipo, tamanho=nRx)
+                        msg_recebida = not client.com1.rx.getIsEmpty()
+                        if msg_recebida:
+                            rxBuffer, nRx = client.recebe_pacote()
+                            tipo = rxBuffer[0]
+                            client.atualiza_arquivo(envio=False, tipo=tipo, tamanho=nRx)
+                        
+                        ################### TIMEOUT ###################
+                        else:
+                            client.cont+=1
+                        ################### TIMEOUT ###################
+                        
                     if time.time() - timer2  > 20:
+                        print('TIMEOUT')
                         # Envia msg t5
                         head = b'\x05\x00\x00\x00\x00\x00\x00\x00\x00\x00'
                         client.envia_pacote(head)
@@ -141,18 +157,20 @@ def main():
                     else:
                         if tipo == 6:
                             client.cont = rxBuffer[6]
-                            payload = client.mensagem[(client.cont-1)*114:(client.cont)*114] if client.cont < client.numPck else client.mensagem[(client.cont-1)*114:]
-                            head = b'\x03\x00\x00' + client.numPck.to_bytes(1, 'big') + client.cont.to_bytes(1, 'big') + len(payload).to_bytes(1, 'big') + b'\x00\x00\x00\x00'
-                            client.envia_pacote(head, payload=payload)
-                            client.atualiza_arquivo(pacote_enviado=client.cont, total_pacotes=client.numPck)
-                            print(f'Enviou pacote {client.cont}')
+                            tipo=4
+                            # payload = client.mensagem[(client.cont-1)*114:(client.cont)*114] if client.cont < client.numPck else client.mensagem[(client.cont-1)*114:]
+                            # head = b'\x03\x00\x00' + client.numPck.to_bytes(1, 'big') + client.cont.to_bytes(1, 'big') + len(payload).to_bytes(1, 'big') + b'\x00\x00\x00\x00'
+                            # client.envia_pacote(head, payload=payload)
+                            # client.atualiza_arquivo(pacote_enviado=client.cont, total_pacotes=client.numPck)
+                            # print(f'Enviou pacote {client.cont}')
 
-                            timer1=time.time()
-                            timer2=time.time()
+                            # timer1=time.time()
+                            # timer2=time.time()
 
-                            rxBuffer, nRx = client.recebe_pacote()
-                            tipo = rxBuffer[0]
-                            client.atualiza_arquivo(envio=False, tipo=tipo, tamanho=nRx)
+                            # rxBuffer, nRx = client.recebe_pacote()
+                            # tipo = rxBuffer[0]
+                            # print(f'Tipo do erro: {tipo}')
+                            # client.atualiza_arquivo(envio=False, tipo=tipo, tamanho=nRx)
                         
             else:
                 print('Contador maior que o número de pacotes. SUCESSO')
