@@ -39,6 +39,7 @@ class Server():
         print("Abriu a comunicação")
         print('Esperando 2 bytes de sacrifício')
         rxBuffer_0, nRx_0 = self.com1.getData(2)
+        self.com1.rx.clearBuffer()
         time.sleep(1)
 
     def recebe_pacote(self):
@@ -80,8 +81,9 @@ class Server():
         self.atualiza_arquivo(recebimento=False, tipo=tipo)
 
     def atualiza_arquivo(self, pacote_enviado=None, total_pacotes=None,instante=time.ctime(time.time()), recebimento=True, tipo=3, tamanho=14, CRC='' ):
+        time.sleep(1)
         ########## ERRO ORDEM DOS PACOTES ##########
-        # caso = 2
+        caso = 2
         ########## ERRO ORDEM DOS PACOTES ##########
         ########## ERRO TIME OUT ##########
         # caso = 3
@@ -89,11 +91,14 @@ class Server():
         ########## SITUAÇÃO FIO TIRADO ##########
         # caso = 4
         ########## SITUAÇÃO FIO TIRADO ##########
-        caso = 1
+        #caso = 1
         with open(f'server{caso}.txt', 'a') as f:
             operacao = 'Recebimento' if recebimento else 'Envio'
             if recebimento:
-                f.write(f'{instante} / {operacao} / {tipo} / {tamanho} / {pacote_enviado} / {total_pacotes} / {CRC}\n')
+                if tipo == 3:
+                    f.write(f'{instante} / {operacao} / {tipo} / {tamanho} / {pacote_enviado} / {total_pacotes} / {CRC}\n')
+                else:
+                    f.write(f'{instante} / {operacao} / {tipo} / {tamanho} / {CRC}\n')
             else:
                 f.write(f'{instante} / {operacao} / {tipo} / {tamanho} / {CRC}\n')
         
@@ -195,6 +200,8 @@ def main():
                                     if tipo == 3:
                                         
                                         ### pckg ok?
+                                        numPckg = rxBuffer[4]
+                                        quantPckg = rxBuffer[3]
                                         
                                         tamanho_payload = rxBuffer[5]
                                         print(f'Deveria ser 114: {tamanho_payload}')
@@ -210,9 +217,7 @@ def main():
                                             print(f'Novo ultimo pacote recebido: {rxBuffer[4]}')
                                             server.ultimo_pacote = rxBuffer[4]
                                             head = b'\x04\x00\x00\x00\x00\x00\x00' + server.ultimo_pacote.to_bytes(1, 'big') + b'\x00\x00'
-                                            ################### TIMEOUT ###################
-                                            # time.sleep(25)
-                                            ################### TIMEOUT ###################
+                                            
                                             server.envia_pacote(head)
                                             print('Enviou t4')
                                         else:
