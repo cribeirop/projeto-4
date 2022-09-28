@@ -4,8 +4,8 @@ import numpy as np
 class Client:
     def __init__(self, com1):
         self.com1 = com1
-        source = "imgs/imageR.png"
-        self.imagem = open(source, 'rb').read()
+        imagem = "imgs/imageR.png"
+        self.mensagem = open(imagem, 'rb').read()
         self.numPck = len(self.mensagem)//114 + 1
         self.id_server = 14
         self.id_arquivo = 0
