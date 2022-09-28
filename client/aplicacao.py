@@ -7,6 +7,7 @@ class Client:
         self.imagem = open(source, 'rb').read()
         self.numPck = len(self.mensagem)//114 + 1
         self.id_server = 14
+        self.id_arquivo = 0
         self.inicia = False
         self.cont = 0
         self.sucesso = False
@@ -75,7 +76,7 @@ def main():
         while not client.inicia or not client.encerrou:
             print("Quero falar com você")
             # t1
-            head = b''
+            head = b'\x01' + client.id_server.to_bytes(1, 'big') + b'\x00' + client.numPck.to_bytes(1, 'big') + b'\x00' + client.id_arquivo.to_bytes(1, 'big') + b'\x00\x00\x00\x00'
             client.envia_pacote(head)
             time.sleep(5)
             recebeu_msg = not client.com1.rx.getIsEmpty()
@@ -93,8 +94,8 @@ def main():
                 print(f'Sem sucesso e sem encerramento. Contagem de pacotes: {client.cont}')
                 if client.cont <= client.numPck:
                     # t3
-                    head = b''
                     payload = client.mensagem[(client.cont-1)*114:(client.cont)*114] if client.cont < client.numPck else client.mensagem[(client.cont-1)*114:]
+                    head = b'\x03\x00\x00' + client.numPck.to_bytes(1, 'big') + client.cont.to_bytes(1, 'big') + len(payload).to_bytes(1, 'big') + b'\x00\x00\x00\x00'
                     client.envia_pacote(head, payload=payload)
                     print(f'Enviou pacote {client.cont}')
 
@@ -110,8 +111,8 @@ def main():
                     while not tipo == 4:
                         if timer1 - time.time() > 5:
                             # t3
-                            head = b''
                             payload = client.mensagem[(client.cont-1)*114:(client.cont)*114] if client.cont < client.numPck else client.mensagem[(client.cont-1)*114:]
+                            head = b'\x03\x00\x00' + client.numPck.to_bytes(1, 'big') + client.cont.to_bytes(1, 'big') + len(payload).to_bytes(1, 'big') + b'\x00\x00\x00\x00'
                             client.envia_pacote(head, payload=payload)
                             print(f'Enviou pacote {client.cont}')
                             timer1 = time.time()
@@ -125,8 +126,8 @@ def main():
                         else:
                             if tipo == 6:
                                 client.cont = rxBuffer[6]
-                                head = b''
                                 payload = client.mensagem[(client.cont-1)*114:(client.cont)*114] if client.cont < client.numPck else client.mensagem[(client.cont-1)*114:]
+                                head = b'\x03\x00\x00' + client.numPck.to_bytes(1, 'big') + client.cont.to_bytes(1, 'big') + len(payload).to_bytes(1, 'big') + b'\x00\x00\x00\x00'
                                 client.envia_pacote(head, payload=payload)
                                 print(f'Enviou pacote {client.cont}')
 
