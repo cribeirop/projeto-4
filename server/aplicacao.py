@@ -42,6 +42,12 @@ class Server():
         rxBuffer_0, nRx_0 = self.com1.getData(2)
         self.com1.rx.clearBuffer()
         time.sleep(1)
+    
+    def crcSet(self, payload):
+        crc = Crc16(payload).to_bytes(2, 'big')
+        h8 = crc[0]
+        h9 = crc[1]
+        return h8 + h9
 
     def recebe_pacote(self):
         headRxBuffer, headNRx = self.com1.getData(10)
@@ -62,6 +68,11 @@ class Server():
             if tamanho_payload > 0:
                 self.atualiza_arquivo(tamanho=tamanho_payload, pacote_enviado=headRxBuffer[4], total_pacotes=headRxBuffer[3], tipo=tipo)
                 payloadRxBuffer, payloadNRx = self.com1.getData(tamanho_payload)
+                crc = self.crcSet(payloadRxBuffer)
+                crcClient = headRxBuffer[8] + headRxBuffer[9]
+                if crc != crcClient:
+                    headRxBuffer[4] = '\xAA'
+
                 lenEop = self.com1.rx.getBufferLen()
                 eopRxBuffer, eopNRx = self.com1.getData(lenEop)
                 rxBuffer = headRxBuffer + payloadRxBuffer + eopRxBuffer
@@ -84,13 +95,13 @@ class Server():
     def atualiza_arquivo(self, pacote_enviado=None, total_pacotes=None,instante=time.ctime(time.time()), recebimento=True, tipo=3, tamanho=14, CRC='' ):
         time.sleep(1)
         ########## ERRO ORDEM DOS PACOTES ##########
-        #caso = 2
+        # caso = 2
         ########## ERRO ORDEM DOS PACOTES ##########
         ########## ERRO TIME OUT ##########
-        #caso = 3
+        # caso = 3
         ########## ERRO TIME OUT ##########
         ########## SITUAÇÃO FIO TIRADO ##########
-        #caso = 4
+        # caso = 4
         ########## SITUAÇÃO FIO TIRADO ##########
         caso = 1
         with open(f'server{caso}.txt', 'a') as f:
@@ -205,7 +216,7 @@ def main():
                                         quantPckg = rxBuffer[3]
                                         
                                         tamanho_payload = rxBuffer[5]
-                                        print(f'Deveria ser 114: {tamanho_payload}')
+                                        
                                         pacote_correto = rxBuffer[4] == server.cont
                                         pos_eop_ok = rxBuffer[10+tamanho_payload:] == b'\xAA\xBB\xCC\xDD'
                                         pckg_ok = pacote_correto and pos_eop_ok

@@ -15,9 +15,9 @@ class Client:
         self.sucesso = False
         self.encerrou = False
         ###############################################################
-        self.erre=False
+        # self.erre=False
         ################################### CASO 2 - ERRO
-        #self.erre=True
+        self.erre=True
         ###############################################################
     
     def sacrifica_byte(self):
@@ -33,13 +33,13 @@ class Client:
     def atualiza_arquivo(self, pacote_enviado=None, total_pacotes=None,instante=time.ctime(time.time()), envio=True, tipo=3, tamanho=128, CRC='' ):
         time.sleep(1)
         ########## ERRO ORDEM DOS PACOTES ##########
-        #caso = 2
+        # caso = 2
         ########## ERRO ORDEM DOS PACOTES ##########
         ########## ERRO TIME OUT ##########
-        #caso = 3
+        # caso = 3
         ########## ERRO TIME OUT ##########
         ########## SITUAÇÃO FIO TIRADO ##########
-        #caso = 4
+        # caso = 4
         ########## SITUAÇÃO FIO TIRADO ##########
         caso = 1
         with open(f'client{caso}.txt', 'a') as f:
@@ -67,6 +67,12 @@ class Client:
         nRx = headNRx + eopNRx
 
         return rxBuffer, nRx
+
+    def crcSet(self, payload):
+        crc = Crc16(payload).to_bytes(2, 'big')
+        h8 = crc[0]
+        h9 = crc[1]
+        return h8 + h9
 
 def main():
     try:
@@ -109,7 +115,7 @@ def main():
                     client.cont = 2
                     client.erre=False
                 payload = client.mensagem[(client.cont-1)*114:(client.cont)*114] if client.cont < client.numPck else client.mensagem[(client.cont-1)*114:]
-                head = b'\x03\x00\x00' + client.numPck.to_bytes(1, 'big') + client.cont.to_bytes(1, 'big') + len(payload).to_bytes(1, 'big') + b'\x00\x00\x00\x00'
+                head = b'\x03\x00\x00' + client.numPck.to_bytes(1, 'big') + client.cont.to_bytes(1, 'big') + len(payload).to_bytes(1, 'big') + b'\x00\x00' + client.crcSet(payload)
                 client.envia_pacote(head, payload=payload)
                 client.atualiza_arquivo(pacote_enviado=client.cont, total_pacotes=client.numPck)
                 print(f'Enviou pacote {client.cont}')
@@ -135,7 +141,7 @@ def main():
                         # t3
                         client.cont -= 1
                         payload = client.mensagem[(client.cont-1)*114:(client.cont)*114] if client.cont < client.numPck else client.mensagem[(client.cont-1)*114:]
-                        head = b'\x03\x00\x00' + client.numPck.to_bytes(1, 'big') + client.cont.to_bytes(1, 'big') + len(payload).to_bytes(1, 'big') + b'\x00\x00\x00\x00'
+                        head = b'\x03\x00\x00' + client.numPck.to_bytes(1, 'big') + client.cont.to_bytes(1, 'big') + len(payload).to_bytes(1, 'big') + b'\x00\x00' + client.crcSet(payload)
                         print(f'Pacote sendo enviado: {client.cont}')
                         client.envia_pacote(head, payload=payload)
                         client.atualiza_arquivo(pacote_enviado=client.cont, total_pacotes=client.numPck)
@@ -163,19 +169,6 @@ def main():
                         if tipo == 6:
                             client.cont = rxBuffer[6]
                             tipo=4
-                            # payload = client.mensagem[(client.cont-1)*114:(client.cont)*114] if client.cont < client.numPck else client.mensagem[(client.cont-1)*114:]
-                            # head = b'\x03\x00\x00' + client.numPck.to_bytes(1, 'big') + client.cont.to_bytes(1, 'big') + len(payload).to_bytes(1, 'big') + b'\x00\x00\x00\x00'
-                            # client.envia_pacote(head, payload=payload)
-                            # client.atualiza_arquivo(pacote_enviado=client.cont, total_pacotes=client.numPck)
-                            # print(f'Enviou pacote {client.cont}')
-
-                            # timer1=time.time()
-                            # timer2=time.time()
-
-                            # rxBuffer, nRx = client.recebe_pacote()
-                            # tipo = rxBuffer[0]
-                            # print(f'Tipo do erro: {tipo}')
-                            # client.atualiza_arquivo(envio=False, tipo=tipo, tamanho=nRx)
                         
             else:
                 print('Contador maior que o número de pacotes. SUCESSO')
