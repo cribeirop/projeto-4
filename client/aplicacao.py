@@ -1,5 +1,6 @@
 from enlace import *
 import numpy as np
+from crc import Crc16
 
 class Client:
     def __init__(self, com1):
@@ -13,7 +14,11 @@ class Client:
         self.cont = 0
         self.sucesso = False
         self.encerrou = False
-        self.erre=True
+        ###############################################################
+        self.erre=False
+        ################################### CASO 2 - ERRO
+        #self.erre=True
+        ###############################################################
     
     def sacrifica_byte(self):
         #Se chegamos até aqui, a comunicação foi aberta com sucesso. Faça um print para informar.
@@ -28,7 +33,7 @@ class Client:
     def atualiza_arquivo(self, pacote_enviado=None, total_pacotes=None,instante=time.ctime(time.time()), envio=True, tipo=3, tamanho=128, CRC='' ):
         time.sleep(1)
         ########## ERRO ORDEM DOS PACOTES ##########
-        caso = 2
+        #caso = 2
         ########## ERRO ORDEM DOS PACOTES ##########
         ########## ERRO TIME OUT ##########
         #caso = 3
@@ -36,7 +41,7 @@ class Client:
         ########## SITUAÇÃO FIO TIRADO ##########
         #caso = 4
         ########## SITUAÇÃO FIO TIRADO ##########
-        #caso = 1
+        caso = 1
         with open(f'client{caso}.txt', 'a') as f:
             operacao = 'Envio' if envio else 'Recebimento'
             if envio:

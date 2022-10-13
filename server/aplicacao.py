@@ -13,6 +13,7 @@
 from enlace import *
 import time
 import numpy as np
+from crc import Crc16
 
 # voce deverá descomentar e configurar a porta com através da qual ira fazer comunicaçao
 #   para saber a sua porta, execute no terminal :
@@ -83,7 +84,7 @@ class Server():
     def atualiza_arquivo(self, pacote_enviado=None, total_pacotes=None,instante=time.ctime(time.time()), recebimento=True, tipo=3, tamanho=14, CRC='' ):
         time.sleep(1)
         ########## ERRO ORDEM DOS PACOTES ##########
-        caso = 2
+        #caso = 2
         ########## ERRO ORDEM DOS PACOTES ##########
         ########## ERRO TIME OUT ##########
         #caso = 3
@@ -91,7 +92,7 @@ class Server():
         ########## SITUAÇÃO FIO TIRADO ##########
         #caso = 4
         ########## SITUAÇÃO FIO TIRADO ##########
-        #caso = 1
+        caso = 1
         with open(f'server{caso}.txt', 'a') as f:
             operacao = 'Recebimento' if recebimento else 'Envio'
             if recebimento:
