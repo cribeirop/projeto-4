@@ -15,9 +15,9 @@ class Client:
         self.sucesso = False
         self.encerrou = False
         ###############################################################
-        # self.erre=False
+        self.erre=False
         ################################### CASO 2 - ERRO
-        self.erre=True
+        #self.erre=True
         ###############################################################
     
     def sacrifica_byte(self):
